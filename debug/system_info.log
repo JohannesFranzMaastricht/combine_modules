@@ -1,0 +1,3 @@
+Platform:            Linux debian buster/sid
+Architecture:        ('64bit', '')
+CMake version:           3.10.2
