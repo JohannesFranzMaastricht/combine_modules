@@ -44,9 +44,7 @@ BDM_CTPARAM(experimental::neuroscience) {
 
 inline int Simulate(int argc, const char** argv) {
   Simulation<> simulation(argc, argv);
-
   auto* rm = simulation.GetResourceManager();
-  rm->template Reserve<MyCell>(1);
 
   auto construct_soma = [](const std::array<double, 3> position) {
     MyCell cell(position);
@@ -67,11 +65,28 @@ inline int Simulate(int argc, const char** argv) {
     dendrite_basal1->AddBiologyModule(BasalElongationBM());
   };
 
+// 1. Create cell
+  rm->template Reserve<MyCell>(1);
   auto cell = construct_soma({0, 0, 0});
   rm->push_back(cell);
+
+// 2. Let it divide
+//  simulation.GetScheduler()->Simulate(10);
+
+// 3. Remove GrowDivide
+  const auto& bms = cell.GetAllBiologyModules();
+  for (size_t i = 0; i < bms.size(); i++) {
+    auto* to_be_removed = get_if<GrowDivide>(&bms[i]);
+    if (to_be_removed != nullptr) {
+      cell.RemoveBiologyModule(to_be_removed);
+      break;
+    }
+  }
+
+// 4. Add dendrites
   add_dendrites(cell);
 
-  // Run simulation for one timestep
+// 5. Let dendrites grow (add substances first)
   simulation.GetScheduler()->Simulate(10);
 
   std::cout << "Simulation completed successfully!" << std::endl;
