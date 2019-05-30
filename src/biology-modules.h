@@ -26,21 +26,39 @@ struct ApicalElongationBM : public BaseBiologyModule {
   ApicalElongationBM() : BaseBiologyModule(gAllEventIds) {}
 
   /// Default event constructor
-  template <typename TEvent, typename TBm>
-  ApicalElongationBM(const TEvent& event, TBm* other, uint64_t new_oid = 0)
+  ApicalElongationBM(const Event& event, BaseBiologyModule* other, uint64_t new_oid = 0)
       : BaseBiologyModule(event, other, new_oid) {}
+
+  BaseBiologyModule* GetInstance(const Event& event, BaseBiologyModule* other,
+                                 uint64_t new_oid = 0) const override {
+    return new ApicalElongationBM(event, other, new_oid);
+  }
+
+  /// Create a copy of this biology module.
+  BaseBiologyModule* GetCopy() const override { return new ApicalElongationBM(*this); }
+
+  /// Default event handler (exising biology module won't be modified on
+  /// any event)
+  void EventHandler(const Event& event, BaseBiologyModule* other1,
+                    BaseBiologyModule* other2 = nullptr) override {
+    BaseBiologyModule::EventHandler(event, other1, other2);
+  }
 
   // TODO: don't copy BM when split (elongate)
 
-  template <typename T, typename TSimulation = Simulation<>>
-  void Run(T* dendrite) {
-    auto* sim = TSimulation::GetActive();
+  void Run(SimObject* so) {
+    auto* sim = Simulation::GetActive();
     auto* random = sim->GetRandom();
     auto* rm = sim->GetResourceManager();
 
     if (!init_) {
       dg_guide_ = rm->GetDiffusionGrid(kSubstanceApical);
       init_ = true;
+    }
+
+    auto* dendrite = so->As<MyNeurite>();
+    if (!dendrite) {
+      return;
     }
 
     if (dendrite->GetDiameter() > 0.5) {
@@ -72,7 +90,7 @@ struct ApicalElongationBM : public BaseBiologyModule {
                                   rand_noise),
                         random->Uniform(0, 1)),
             dendrite->GetSpringAxis());
-        auto dendrite_2 = dendrite->Branch(branch_direction);
+        auto* dendrite_2 = dendrite->Branch(branch_direction)->SimObject::As<MyNeurite>();
         dendrite_2->SetCanBranch(false);
         dendrite_2->SetDiameter(0.65);
       }
@@ -83,28 +101,40 @@ struct ApicalElongationBM : public BaseBiologyModule {
  private:
   bool init_ = false;
   DiffusionGrid* dg_guide_ = nullptr;
-  ClassDefNV(ApicalElongationBM, 1);
+  BDM_CLASS_DEF_OVERRIDE(ApicalElongationBM, 1);
 };
 
 struct BasalElongationBM : public BaseBiologyModule {
   BasalElongationBM() : BaseBiologyModule(gAllEventIds) {}
 
   /// Default event constructor
-  template <typename TEvent, typename TBm>
-  BasalElongationBM(const TEvent& event, TBm* other, uint64_t new_oid = 0)
+  BasalElongationBM(const Event& event, BaseBiologyModule* other,
+                     uint64_t new_oid = 0)
       : BaseBiologyModule(event, other, new_oid) {}
 
-  // TODO: don't copy BM when split (elongate)
+  /// Create a new instance of this object using the default constructor.
+  BaseBiologyModule* GetInstance(const Event& event, BaseBiologyModule* other,
+                                 uint64_t new_oid = 0) const override {
+    return new BasalElongationBM(event, other, new_oid);
+  }
 
-  template <typename T, typename TSimulation = Simulation<>>
-  void Run(T* dendrite) {
-    auto* sim = TSimulation::GetActive();
+  /// Create a copy of this biology module.
+  BaseBiologyModule* GetCopy() const override {
+    return new BasalElongationBM(*this);
+  }
+
+  void Run(SimObject* so) override {
+    auto* sim = Simulation::GetActive();
     auto* random = sim->GetRandom();
     auto* rm = sim->GetResourceManager();
 
     if (!init_) {
       dg_guide_ = rm->GetDiffusionGrid(kSubstanceBasal);
       init_ = true;
+    }
+    auto* dendrite = so->As<MyNeurite>();
+    if (!dendrite) {
+      return;
     }
 
     if (dendrite->IsTerminal() && dendrite->GetDiameter() > 0.75) {
@@ -138,7 +168,7 @@ struct BasalElongationBM : public BaseBiologyModule {
  private:
   bool init_ = false;
   DiffusionGrid* dg_guide_ = nullptr;
-  ClassDefNV(BasalElongationBM, 1);
+  BDM_CLASS_DEF_OVERRIDE(BasalElongationBM, 1);
 };
 
 }  // namespace bdm

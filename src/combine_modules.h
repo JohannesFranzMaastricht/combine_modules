@@ -23,62 +23,54 @@
 
 namespace bdm {
 
-// Define compile time parameter
-BDM_CTPARAM(experimental::neuroscience) {
-  BDM_CTPARAM_HEADER(experimental::neuroscience);
-
-  using NeuronSoma = MyCell;
-  using NeuriteElement = MyNeurite;
-
-  using SimObjectTypes = CTList<bdm::MyCell, bdm::MyNeurite>;
-
-  BDM_CTPARAM_FOR(bdm, MyCell) { 
-    //using BiologyModules = CTList<NullBiologyModule>;
-    using BiologyModules = CTList<GrowDivide>; 
-  };
-
-  BDM_CTPARAM_FOR(bdm, MyNeurite) {
-    using BiologyModules = CTList<ApicalElongationBM, BasalElongationBM>;
-  };
-};
-
 inline int Simulate(int argc, const char** argv) {
-  Simulation<> simulation(argc, argv);
+  experimental::neuroscience::InitModule();
+  Simulation simulation(argc, argv);
   auto* rm = simulation.GetResourceManager();
 
   auto construct_soma = [](const std::array<double, 3> position) {
-    MyCell cell(position);
-    cell.SetDiameter(6);
-    cell.SetAdherence(0.4);
-    cell.SetMass(1.0);
-    cell.SetCanDivide(true);
-    cell.AddBiologyModule(GrowDivide(8, 400, {gAllEventIds})); // 
+    auto* cell = new MyCell(position);
+    cell->SetDiameter(6);
+    cell->SetAdherence(0.4);
+    cell->SetMass(1.0);
+    cell->SetCanDivide(true);
+    // Don't use gAllEventIds in the following line.
+    // Otherwise this module will be copied to neurites during neurite extension.
+    // This wil cause a fatal error because the GrowDivide module is only allowed
+    // for simulation objects that derive from Cell. Neurites do not.
+    cell->AddBiologyModule(new GrowDivide(8, 400, {CellDivisionEvent::kEventId})); //
     return cell;
   };
 
-  auto add_dendrites = [](MyCell soma) {
-    auto soma_soptr = soma.GetSoPtr();
-    auto&& dendrite_apical = soma_soptr->ExtendNewNeurite({0, 0, 1});
-    dendrite_apical->AddBiologyModule(ApicalElongationBM());
+  auto add_dendrites = [](MyCell* soma) {
+    MyNeurite my_neurite;
+    auto* dendrite_apical = soma->ExtendNewNeurite({0, 0, 1}, &my_neurite)->SimObject::As<MyNeurite>();
+    dendrite_apical->AddBiologyModule(new ApicalElongationBM());
     dendrite_apical->SetCanBranch(true);
-    auto&& dendrite_basal1 = soma_soptr->ExtendNewNeurite({0, 0, -1});
-    dendrite_basal1->AddBiologyModule(BasalElongationBM());
+    auto* dendrite_basal1 = soma->ExtendNewNeurite({0, 0, -1}, &my_neurite)->SimObject::As<MyNeurite>();
+    dendrite_basal1->AddBiologyModule(new BasalElongationBM());
   };
 
 // 1. Create cell
-  rm->template Reserve<MyCell>(1);
-  auto cell = construct_soma({0, 0, 0});
+  auto* cell = construct_soma({0, 0, 0});
   rm->push_back(cell);
+
+  // Add substances
+  ModelInitializer::DefineSubstance(kSubstanceApical, "substance_apical", 0, 0,
+                                    100);
+  ModelInitializer::DefineSubstance(kSubstanceBasal, "substance_basal", 0, 0,
+                                    100);
+  // TODO initialize substances
 
 // 2. Let it divide
 //  simulation.GetScheduler()->Simulate(10);
 
 // 3. Remove GrowDivide
-  const auto& bms = cell.GetAllBiologyModules();
+  const auto& bms = cell->GetAllBiologyModules();
   for (size_t i = 0; i < bms.size(); i++) {
-    auto* to_be_removed = get_if<GrowDivide>(&bms[i]);
+    auto* to_be_removed = dynamic_cast<GrowDivide*>(bms[i]);
     if (to_be_removed != nullptr) {
-      cell.RemoveBiologyModule(to_be_removed);
+      cell->RemoveBiologyModule(to_be_removed);
       break;
     }
   }
