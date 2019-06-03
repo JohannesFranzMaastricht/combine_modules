@@ -63,7 +63,7 @@ inline int Simulate(int argc, const char** argv) {
   // TODO initialize substances
 
 // 2. Let it divide
-//  simulation.GetScheduler()->Simulate(10);
+  simulation.GetScheduler()->Simulate(10); // causes a bug in the visualization
 
 // 3. Remove GrowDivide
   const auto& bms = cell->GetAllBiologyModules();
