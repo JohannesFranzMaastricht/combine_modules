@@ -10,5 +10,11 @@ additional_data_members = [ "diameter_" ]
 name = "MyNeurite"
 additional_data_members = [ ]
 
+[[visualize_diffusion]]
+name = "kSubstanceApical"
+gradient = true
 
+[[visualize_diffusion]]
+name = "kSubstanceBasal"
+gradient = true
 
