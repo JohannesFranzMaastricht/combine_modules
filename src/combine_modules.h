@@ -27,6 +27,7 @@ inline int Simulate(int argc, const char** argv) {
   experimental::neuroscience::InitModule();
   Simulation simulation(argc, argv);
   auto* rm = simulation.GetResourceManager();
+  auto* param = simulation.GetParam();
 
   auto construct_soma = [](const std::array<double, 3> position) {
     auto* cell = new MyCell(position);
@@ -60,6 +61,8 @@ inline int Simulate(int argc, const char** argv) {
                                     100);
   ModelInitializer::DefineSubstance(kSubstanceBasal, "substance_basal", 0, 0,
                                     100);
+  ModelInitializer::InitializeSubstance(kSubstanceApical, "substance_apical", GaussianBand(param->max_bound_, 200, Axis::kZAxis));
+  ModelInitializer::InitializeSubstance(kSubstanceApical, "substance_basal", GaussianBand(param->min_bound_, 200, Axis::kZAxis));
   // TODO initialize substances
 
 // 2. Let it divide

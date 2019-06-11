@@ -11,10 +11,10 @@ name = "MyNeurite"
 additional_data_members = [ ]
 
 [[visualize_diffusion]]
-name = "kSubstanceApical"
+name = "substance_apical"
 gradient = true
 
 [[visualize_diffusion]]
-name = "kSubstanceBasal"
+name = "substance_basal"
 gradient = true
 
